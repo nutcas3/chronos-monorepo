@@ -1,0 +1,10 @@
+go 1.24
+
+use (
+	.
+	./clients/go/chronos-client
+	./executor
+	./observatory
+	./scheduler
+	./worker-pool
+)
