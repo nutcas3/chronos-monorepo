@@ -46,7 +46,7 @@ func DefaultClientOptions() *ClientOptions {
 }
 
 // NewClient creates a new ChronosClient with the given options
-func NewClient(ctx context.Context, opts *ClientOptions) (*ChronosClient, error) {
+func NewClient(opts *ClientOptions) (*ChronosClient, error) {
 	if opts == nil {
 		opts = DefaultClientOptions()
 	}
@@ -55,14 +55,14 @@ func NewClient(ctx context.Context, opts *ClientOptions) (*ChronosClient, error)
 	tracer := otel.Tracer(opts.TracerName)
 
 	// Connect to scheduler service
-	schedulerConn, err := grpc.DialContext(ctx, opts.SchedulerURL, 
+	schedulerConn, err := grpc.NewClient(opts.SchedulerURL, 
 		grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to scheduler: %w", err)
 	}
 
 	// Connect to executor service
-	executorConn, err := grpc.DialContext(ctx, opts.ExecutorURL, 
+	executorConn, err := grpc.NewClient(opts.ExecutorURL, 
 		grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		schedulerConn.Close()
@@ -70,7 +70,7 @@ func NewClient(ctx context.Context, opts *ClientOptions) (*ChronosClient, error)
 	}
 
 	// Connect to durable engine service
-	durableEngConn, err := grpc.DialContext(ctx, opts.DurableEngURL, 
+	durableEngConn, err := grpc.NewClient(opts.DurableEngURL, 
 		grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		schedulerConn.Close()
@@ -79,7 +79,7 @@ func NewClient(ctx context.Context, opts *ClientOptions) (*ChronosClient, error)
 	}
 
 	// Connect to worker pool service
-	workerPoolConn, err := grpc.DialContext(ctx, opts.WorkerPoolURL, 
+	workerPoolConn, err := grpc.NewClient(opts.WorkerPoolURL, 
 		grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		schedulerConn.Close()
@@ -89,7 +89,7 @@ func NewClient(ctx context.Context, opts *ClientOptions) (*ChronosClient, error)
 	}
 
 	// Connect to observatory service
-	observatoryConn, err := grpc.DialContext(ctx, opts.ObservatoryURL, 
+	observatoryConn, err := grpc.NewClient(opts.ObservatoryURL, 
 		grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		schedulerConn.Close()
