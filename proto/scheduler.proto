@@ -1,0 +1,92 @@
+syntax = "proto3";
+
+package scheduler;
+
+option go_package = "github.com/nutcas3/chronos-monorepo/proto/scheduler";
+
+import "google/protobuf/timestamp.proto";
+
+// The Scheduler service definition
+service SchedulerService {
+  // Create a new workflow
+  rpc CreateWorkflow(CreateWorkflowRequest) returns (CreateWorkflowResponse) {}
+  
+  // Get workflow details
+  rpc GetWorkflow(GetWorkflowRequest) returns (GetWorkflowResponse) {}
+  
+  // List all workflows
+  rpc ListWorkflows(ListWorkflowsRequest) returns (ListWorkflowsResponse) {}
+  
+  // Trigger a workflow run
+  rpc TriggerWorkflow(TriggerWorkflowRequest) returns (TriggerWorkflowResponse) {}
+}
+
+// Workflow definition
+message Workflow {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string cron_schedule = 4;
+  bool is_active = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+  repeated Task tasks = 8;
+}
+
+// Task definition within a workflow
+message Task {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string task_type = 4;
+  map<string, string> parameters = 5;
+  int32 timeout_seconds = 6;
+  int32 max_retries = 7;
+  repeated string depends_on = 8;
+}
+
+// Request to create a new workflow
+message CreateWorkflowRequest {
+  string name = 1;
+  string description = 2;
+  string cron_schedule = 3;
+  repeated Task tasks = 4;
+}
+
+// Response for workflow creation
+message CreateWorkflowResponse {
+  string workflow_id = 1;
+}
+
+// Request to get workflow details
+message GetWorkflowRequest {
+  string workflow_id = 1;
+}
+
+// Response with workflow details
+message GetWorkflowResponse {
+  Workflow workflow = 1;
+}
+
+// Request to list workflows
+message ListWorkflowsRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+}
+
+// Response with list of workflows
+message ListWorkflowsResponse {
+  repeated Workflow workflows = 1;
+  string next_page_token = 2;
+}
+
+// Request to trigger a workflow run
+message TriggerWorkflowRequest {
+  string workflow_id = 1;
+  map<string, string> parameters = 2;
+}
+
+// Response for workflow trigger
+message TriggerWorkflowResponse {
+  string run_id = 1;
+}

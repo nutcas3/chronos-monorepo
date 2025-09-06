@@ -1,0 +1,125 @@
+syntax = "proto3";
+
+package durable_engine;
+
+option go_package = "github.com/nutcas3/chronos-monorepo/proto/durable_engine";
+
+import "google/protobuf/timestamp.proto";
+
+// The DurableEngine service definition
+service DurableEngineService {
+  // Start a task execution
+  rpc StartTask(StartTaskRequest) returns (StartTaskResponse) {}
+  
+  // Get task status
+  rpc GetTask(GetTaskRequest) returns (GetTaskResponse) {}
+  
+  // Update task state
+  rpc UpdateTaskState(UpdateTaskStateRequest) returns (UpdateTaskStateResponse) {}
+  
+  // Complete a task
+  rpc CompleteTask(CompleteTaskRequest) returns (CompleteTaskResponse) {}
+  
+  // Fail a task
+  rpc FailTask(FailTaskRequest) returns (FailTaskResponse) {}
+  
+  // Poll for available tasks (used by workers)
+  rpc PollForTasks(PollForTasksRequest) returns (PollForTasksResponse) {}
+}
+
+// Task definition
+message Task {
+  string id = 1;
+  string workflow_id = 2;
+  string execution_id = 3;
+  string name = 4;
+  string state = 5;
+  int32 retry_count = 6;
+  int32 max_retries = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+  google.protobuf.Timestamp started_at = 10;
+  google.protobuf.Timestamp completed_at = 11;
+  int32 timeout_seconds = 12;
+  map<string, string> parameters = 13;
+  string result = 14;
+  string error = 15;
+}
+
+// Request to start a task
+message StartTaskRequest {
+  string workflow_id = 1;
+  string execution_id = 2;
+  string task_id = 3;
+  string task_name = 4;
+  map<string, string> parameters = 5;
+  int32 timeout_seconds = 6;
+  int32 max_retries = 7;
+}
+
+// Response for task start
+message StartTaskResponse {
+  string task_id = 1;
+  string state = 2;
+}
+
+// Request to get task status
+message GetTaskRequest {
+  string task_id = 1;
+}
+
+// Response with task details
+message GetTaskResponse {
+  Task task = 1;
+}
+
+// Request to update task state
+message UpdateTaskStateRequest {
+  string task_id = 1;
+  string new_state = 2;
+  string reason = 3;
+}
+
+// Response for task state update
+message UpdateTaskStateResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// Request to complete a task
+message CompleteTaskRequest {
+  string task_id = 1;
+  string result = 2;
+}
+
+// Response for task completion
+message CompleteTaskResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// Request to fail a task
+message FailTaskRequest {
+  string task_id = 1;
+  string error = 2;
+  bool retry = 3;
+}
+
+// Response for task failure
+message FailTaskResponse {
+  bool success = 1;
+  string message = 2;
+  bool will_retry = 3;
+}
+
+// Request to poll for available tasks
+message PollForTasksRequest {
+  repeated string task_types = 1;
+  string worker_id = 2;
+  int32 max_tasks = 3;
+}
+
+// Response with available tasks
+message PollForTasksResponse {
+  repeated Task tasks = 1;
+}

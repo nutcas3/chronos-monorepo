@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package executor;
+
+option go_package = "github.com/nutcas3/chronos-monorepo/proto/executor";
+
+import "google/protobuf/timestamp.proto";
+
+// The Executor service definition
+service ExecutorService {
+  // Start a workflow execution
+  rpc StartWorkflow(StartWorkflowRequest) returns (StartWorkflowResponse) {}
+  
+  // Get workflow execution status
+  rpc GetWorkflowStatus(GetWorkflowStatusRequest) returns (GetWorkflowStatusResponse) {}
+  
+  // Cancel a workflow execution
+  rpc CancelWorkflow(CancelWorkflowRequest) returns (CancelWorkflowResponse) {}
+}
+
+// Workflow execution request
+message StartWorkflowRequest {
+  string workflow_id = 1;
+  string run_id = 2;
+  map<string, string> parameters = 3;
+  string trace_id = 4;
+}
+
+// Workflow execution response
+message StartWorkflowResponse {
+  string execution_id = 1;
+  string status = 2;
+}
+
+// Request to get workflow execution status
+message GetWorkflowStatusRequest {
+  string execution_id = 1;
+}
+
+// Response with workflow execution status
+message GetWorkflowStatusResponse {
+  string execution_id = 1;
+  string workflow_id = 2;
+  string run_id = 3;
+  string status = 4;
+  google.protobuf.Timestamp started_at = 5;
+  google.protobuf.Timestamp completed_at = 6;
+  repeated TaskExecution tasks = 7;
+}
+
+// Task execution details
+message TaskExecution {
+  string task_id = 1;
+  string task_name = 2;
+  string status = 3;
+  google.protobuf.Timestamp started_at = 4;
+  google.protobuf.Timestamp completed_at = 5;
+  int32 retry_count = 6;
+  string error = 7;
+}
+
+// Request to cancel a workflow execution
+message CancelWorkflowRequest {
+  string execution_id = 1;
+}
+
+// Response for workflow cancellation
+message CancelWorkflowResponse {
+  bool success = 1;
+  string message = 2;
+}
