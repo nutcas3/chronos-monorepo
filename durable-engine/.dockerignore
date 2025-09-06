@@ -1,0 +1,29 @@
+# Ignore build artifacts
+target/
+**/target/
+
+# Ignore version control
+.git
+.gitignore
+
+# Ignore IDE/editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ignore local environment files
+.env
+.env.*
+
+# Ignore logs
+*.log
+
+# Ignore Docker itself
+Dockerfile
+docker-compose*.yml
+
+# Ignore temporary files
+*.tmp
+*.bak
+*.DS_Store
