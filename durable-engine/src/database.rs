@@ -8,98 +8,123 @@ pub async fn init_db_pool() -> Result<PgPool> {
         .unwrap_or_else(|_| "postgres://postgres:postgres@localhost/chronos".to_string());
     
     info!("Connecting to database...");
-    
+
     let pool = PgPoolOptions::new()
         .max_connections(20)
         .connect(&database_url)
         .await?;
-    
+
     info!("Database connection established");
-    
-    // Run migrations if they exist
-    // In a real implementation, this would use sqlx::migrate!() macro
-    
+
+    // Run embedded migrations
+    sqlx::migrate!("./migrations")
+        .run(&pool)
+        .await?;
+
+    info!("Migrations applied successfully");
+
     Ok(pool)
 }
 
-/// Create database schema for the durable engine
-pub async fn create_schema(pool: &PgPool) -> Result<()> {
-    info!("Creating database schema...");
-    
-    // Create tasks table
-    sqlx::query(
-        r#"
-        CREATE TABLE IF NOT EXISTS tasks (
-            id UUID PRIMARY KEY,
-            workflow_id UUID NOT NULL,
-            name VARCHAR(255) NOT NULL,
-            state VARCHAR(50) NOT NULL,
-            retry_count INT NOT NULL DEFAULT 0,
-            max_retries INT NOT NULL DEFAULT 3,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            started_at TIMESTAMPTZ,
-            completed_at TIMESTAMPTZ,
-            timeout_seconds INT NOT NULL DEFAULT 3600,
-            parameters JSONB NOT NULL DEFAULT '{}'::JSONB,
-            result JSONB,
-            error TEXT
-        )
-        "#
+// Example of type-safe queries using sqlx::query!() macro
+// These queries are checked at compile time against your database schema
+
+/// Get a task by ID with compile-time type checking
+pub async fn get_task_by_id(pool: &PgPool, task_id: uuid::Uuid) -> Result<Option<Task>> {
+    let row = sqlx::query!(
+        "SELECT id, workflow_id, name, state, retry_count, max_retries, 
+         created_at, updated_at, started_at, completed_at, timeout_seconds, 
+         parameters, result, error 
+         FROM tasks WHERE id = $1",
+        task_id
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(row.map(|r| Task {
+        id: r.id,
+        workflow_id: r.workflow_id,
+        name: r.name,
+        state: r.state,
+        retry_count: r.retry_count,
+        max_retries: r.max_retries,
+        created_at: r.created_at,
+        updated_at: r.updated_at,
+        started_at: r.started_at,
+        completed_at: r.completed_at,
+        timeout_seconds: r.timeout_seconds,
+        parameters: r.parameters,
+        result: r.result,
+        error: r.error,
+    }))
+}
+
+/// Update task state with compile-time type checking
+pub async fn update_task_state(
+    pool: &PgPool, 
+    task_id: uuid::Uuid, 
+    new_state: &str
+) -> Result<()> {
+    sqlx::query!(
+        "UPDATE tasks SET state = $1, updated_at = NOW() WHERE id = $2",
+        new_state,
+        task_id
     )
     .execute(pool)
     .await?;
-    
-    // Create task_events table for event sourcing
-    sqlx::query(
-        r#"
-        CREATE TABLE IF NOT EXISTS task_events (
-            id UUID PRIMARY KEY,
-            task_id UUID NOT NULL,
-            workflow_id UUID NOT NULL,
-            event_type VARCHAR(50) NOT NULL,
-            previous_state VARCHAR(50),
-            new_state VARCHAR(50) NOT NULL,
-            timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            metadata JSONB,
-            FOREIGN KEY (task_id) REFERENCES tasks(id)
-        )
-        "#
-    )
-    .execute(pool)
-    .await?;
-    
-    // Create workflows table
-    sqlx::query(
-        r#"
-        CREATE TABLE IF NOT EXISTS workflows (
-            id UUID PRIMARY KEY,
-            name VARCHAR(255) NOT NULL,
-            state VARCHAR(50) NOT NULL,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            started_at TIMESTAMPTZ,
-            completed_at TIMESTAMPTZ
-        )
-        "#
-    )
-    .execute(pool)
-    .await?;
-    
-    // Create indexes
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_tasks_workflow_id ON tasks(workflow_id)")
-        .execute(pool)
-        .await?;
-    
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_tasks_state ON tasks(state)")
-        .execute(pool)
-        .await?;
-    
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_task_events_task_id ON task_events(task_id)")
-        .execute(pool)
-        .await?;
-    
-    info!("Database schema created successfully");
-    
+
     Ok(())
 }
+
+/// Get tasks by workflow ID with compile-time type checking
+pub async fn get_tasks_by_workflow(
+    pool: &PgPool, 
+    workflow_id: uuid::Uuid
+) -> Result<Vec<Task>> {
+    let rows = sqlx::query!(
+        "SELECT id, workflow_id, name, state, retry_count, max_retries, 
+         created_at, updated_at, started_at, completed_at, timeout_seconds, 
+         parameters, result, error 
+         FROM tasks WHERE workflow_id = $1 ORDER BY created_at",
+        workflow_id
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows.into_iter().map(|r| Task {
+        id: r.id,
+        workflow_id: r.workflow_id,
+        name: r.name,
+        state: r.state,
+        retry_count: r.retry_count,
+        max_retries: r.max_retries,
+        created_at: r.created_at,
+        updated_at: r.updated_at,
+        started_at: r.started_at,
+        completed_at: r.completed_at,
+        timeout_seconds: r.timeout_seconds,
+        parameters: r.parameters,
+        result: r.result,
+        error: r.error,
+    }).collect())
+}
+
+// Task struct for the type-safe queries above
+#[derive(Debug, Clone)]
+pub struct Task {
+    pub id: uuid::Uuid,
+    pub workflow_id: uuid::Uuid,
+    pub name: String,
+    pub state: String,
+    pub retry_count: i32,
+    pub max_retries: i32,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+    pub started_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub completed_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub timeout_seconds: i32,
+    pub parameters: serde_json::Value,
+    pub result: Option<serde_json::Value>,
+    pub error: Option<String>,
+}
+
