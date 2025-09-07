@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package worker;
+
+option go_package = "github.com/nutcas3/chronos-monorepo/proto/worker";
+
+import "google/protobuf/timestamp.proto";
+
+// The Worker service definition
+service WorkerService {
+  // Register a worker with the system
+  rpc RegisterWorker(RegisterWorkerRequest) returns (RegisterWorkerResponse) {}
+  
+  // Heartbeat to indicate worker is still alive
+  rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse) {}
+  
+  // Execute a task
+  rpc ExecuteTask(ExecuteTaskRequest) returns (ExecuteTaskResponse) {}
+}
+
+// Worker registration request
+message RegisterWorkerRequest {
+  string worker_id = 1;
+  string hostname = 2;
+  repeated string supported_task_types = 3;
+  int32 capacity = 4;
+}
+
+// Worker registration response
+message RegisterWorkerResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// Heartbeat request
+message HeartbeatRequest {
+  string worker_id = 1;
+  int32 current_load = 2;
+  repeated string active_task_ids = 3;
+}
+
+// Heartbeat response
+message HeartbeatResponse {
+  bool success = 1;
+  google.protobuf.Timestamp server_time = 2;
+}
+
+// Task execution request
+message ExecuteTaskRequest {
+  string task_id = 1;
+  string task_type = 2;
+  map<string, string> parameters = 3;
+  int32 timeout_seconds = 4;
+}
+
+// Task execution response
+message ExecuteTaskResponse {
+  bool success = 1;
+  string result = 2;
+  string error = 3;
+  int32 execution_time_ms = 4;
+}
